@@ -1,0 +1,31 @@
+feature,importance
+response_rate_pct,1.820904625237761
+conv_length_trend,1.3638598435927922
+prior_ghosting_perpetrator,1.321132407436536
+avg_response_time_hours,1.1118677580168108
+initiation_ratio,0.9428057791814359
+rejection_sensitivity,0.9178964323955228
+max_silence_gap_days,0.8687626469790952
+platform_inactivity,0.8510443318812562
+relationship_stage,0.7907135638807281
+relationship_satisfaction,0.7305031912568949
+commitment,0.5793848505661611
+breadcrumbing_exposure,0.2157843340766841
+gender_Female,0.15603192265986152
+neuroticism,0.14646743999569722
+relationship_duration_weeks,0.13249028725295134
+perceived_social_support,0.13128523912261975
+platform_Social media,0.08144661472942312
+intimacy,0.07526847984817964
+platform_WhatsApp/Messaging,0.07072229262908328
+platform_In-person/Offline,0.06867531534754924
+gender_Non-binary,0.05925301200090767
+age,0.05634227429164716
+gender_Male,0.04253525529903817
+message_frequency_per_day,0.041678650789600945
+platform_Mixed,0.03644575771718557
+prior_ghosting_experience,0.024995353494632517
+platform_Dating app (Tinder/Bumble),0.023871339159287755
+passion,0.02001052888556407
+active_matches,0.013824037642342796
+conflict_frequency,0.010470203612346008
