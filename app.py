@@ -148,6 +148,20 @@ def load_importance():
     imp_path = os.path.join(os.path.dirname(__file__), "feature_importance.csv")
     return pd.read_csv(imp_path)
 
+@st.cache_data(show_spinner=False)
+def load_background():
+    """Training feature rows used as the SHAP reference distribution.
+
+    Per-instance SHAP values are measured *relative to a background*; without a
+    representative sample the explainer would compare each row against itself
+    and every contribution would collapse to zero.
+    """
+    data_path = os.path.join(os.path.dirname(__file__), "ghosting_prediction_dataset.csv")
+    bg = pd.read_csv(data_path)
+    if "ghosted" in bg.columns:
+        bg = bg.drop(columns=["ghosted"])
+    return bg
+
 try:
     artefact      = load_model()
     pipeline      = artefact["pipeline"]
@@ -515,13 +529,18 @@ else:
         st.caption("Bars show how each feature pushed the prediction toward or away from 'ghosted'. "
                    "Red = increases risk · Blue = reduces risk.")
 
-        # Approximate SHAP-style contribution from preprocessed input
-        # (True per-instance SHAP computed here via LinearExplainer)
+        # True per-instance SHAP, computed via LinearExplainer against a
+        # background sample drawn from the training data.
         try:
             import shap as shap_lib
             pre = pipeline.named_steps["preprocessor"]
             clf = pipeline.named_steps["classifier"]
             X_transformed = pre.transform(input_data)
+
+            # Background distribution — transform the training rows through the
+            # same fitted preprocessor. This is the reference the contribution
+            # of each feature is measured against.
+            background = pre.transform(load_background())
 
             # Get feature names after transformation
             num_names = num_features
@@ -530,9 +549,9 @@ else:
             all_names = num_names + ord_names + nom_names
 
             explainer   = shap_lib.LinearExplainer(clf, shap_lib.maskers.Independent(
-                              X_transformed, max_samples=100))
+                              background, max_samples=100))
             shap_vals   = explainer(X_transformed)
-            sv          = shap_vals.values[0]
+            sv          = np.asarray(shap_vals.values[0]).ravel()
 
             contrib_df = pd.DataFrame({"feature": all_names, "shap": sv})
             contrib_df["abs"] = contrib_df["shap"].abs()
