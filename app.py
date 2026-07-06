@@ -148,20 +148,6 @@ def load_importance():
     imp_path = os.path.join(os.path.dirname(__file__), "feature_importance.csv")
     return pd.read_csv(imp_path)
 
-@st.cache_data(show_spinner=False)
-def load_background():
-    """Training feature rows used as the SHAP reference distribution.
-
-    Per-instance SHAP values are measured *relative to a background*; without a
-    representative sample the explainer would compare each row against itself
-    and every contribution would collapse to zero.
-    """
-    data_path = os.path.join(os.path.dirname(__file__), "ghosting_prediction_dataset.csv")
-    bg = pd.read_csv(data_path)
-    if "ghosted" in bg.columns:
-        bg = bg.drop(columns=["ghosted"])
-    return bg
-
 try:
     artefact      = load_model()
     pipeline      = artefact["pipeline"]
@@ -195,111 +181,119 @@ with st.sidebar:
     # ── Demographic & Context
     st.markdown('<div class="sidebar-section">Context</div>', unsafe_allow_html=True)
 
-    age = st.slider("Age", 18, 55, 26, help="Age of the person being assessed")
-    gender = st.selectbox("Gender", ["Female", "Male", "Non-binary"])
+    age = st.slider("Their age", 18, 55, 26, help="Age of the person being assessed")
+    gender = st.selectbox("Their gender", ["Female", "Male", "Non-binary"])
     relationship_stage = st.selectbox(
-        "Relationship stage",
+        "How serious is the relationship?",
         ["Unrequited", "Non-established", "Casual dating",
          "Committed dating", "Cohabiting/Engaged", "Married"],
         index=2,
-        help="How far along the relationship is"
+        help="Unrequited = one-sided interest · Non-established = just talking/early · "
+             "then casual → committed → living together/engaged → married"
     )
     platform = st.selectbox(
-        "Primary communication platform",
+        "Where do you mostly talk?",
         ["Dating app (Tinder/Bumble)", "Social media",
          "WhatsApp/Messaging", "In-person/Offline", "Mixed"],
-        index=0
+        index=0,
+        help="The main place your conversations happen"
     )
     relationship_duration_weeks = st.slider(
-        "Relationship duration (weeks)", 1, 260, 8,
-        help="How long has the relationship been ongoing?"
+        "How long have you known each other? (weeks)", 1, 260, 8,
+        help="Roughly how many weeks you've been in contact (260 weeks ≈ 5 years)"
     )
 
     # ── Communication Patterns
-    st.markdown('<div class="sidebar-section">Communication patterns</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section">Texting & talking habits</div>', unsafe_allow_html=True)
 
     message_frequency_per_day = st.slider(
-        "Messages per day", 0.2, 30.0, 6.0, step=0.1,
-        help="Average number of messages exchanged daily"
+        "How many messages do you exchange a day?", 0.2, 30.0, 6.0, step=0.1,
+        help="Total texts back and forth on a typical day"
     )
     avg_response_time_hours = st.slider(
-        "Average response time (hours)", 0.1, 72.0, 4.0, step=0.1,
-        help="Average time taken to reply to a message"
+        "How long do replies usually take? (hours)", 0.1, 72.0, 4.0, step=0.1,
+        help="Average wait before they reply. 0.1 = almost instant · 24 = about a day · 72 = three days"
     )
     max_silence_gap_days = st.slider(
-        "Longest silence gap (days)", 0.0, 30.0, 1.5, step=0.1,
-        help="Longest stretch without any communication"
+        "Longest they've gone without messaging (days)", 0.0, 30.0, 1.5, step=0.1,
+        help="The biggest recent gap with no contact at all"
     )
     initiation_ratio = st.slider(
-        "Conversation initiation ratio", 0.0, 1.0, 0.5, step=0.01,
-        help="Proportion of conversations started by this person (0=never, 1=always)"
+        "Who starts the conversations more?", 0.0, 1.0, 0.5, step=0.01,
+        help="0 = they always start · 0.5 = evenly shared · 1 = you always start. "
+             "Higher means you're doing most of the reaching out."
     )
     conv_length_trend = st.select_slider(
-        "Conversation length trend",
+        "Are your chats getting longer or shorter lately?",
         options=[-2, -1, 0, 1, 2],
         value=0,
-        format_func=lambda x: {-2:"Rapidly declining",-1:"Declining",0:"Stable",1:"Growing",2:"Rapidly growing"}[x],
-        help="Trend in how long conversations have been recently"
+        format_func=lambda x: {-2:"Much shorter",-1:"A bit shorter",0:"About the same",1:"A bit longer",2:"Much longer"}[x],
+        help="How the length of your conversations has changed recently"
     )
     response_rate_pct = st.slider(
-        "Response rate (%)", 5.0, 100.0, 78.0, step=0.5,
-        help="Percentage of messages that receive a reply"
+        "What share of your messages get a reply? (%)", 5.0, 100.0, 78.0, step=0.5,
+        help="Out of every 100 messages you send, how many get answered"
     )
 
     # ── Psychological
-    st.markdown('<div class="sidebar-section">Psychological indicators</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section">Feelings & personality</div>', unsafe_allow_html=True)
 
     rejection_sensitivity = st.slider(
-        "Rejection sensitivity (1–7)", 1.0, 7.0, 3.5, step=0.1,
-        help="Tendency to anxiously expect and react to rejection"
+        "How much do they worry about being rejected?", 1.0, 7.0, 3.5, step=0.1,
+        help="1 = very secure and relaxed · 7 = very anxious about being turned down or abandoned"
     )
     relationship_satisfaction = st.slider(
-        "Relationship satisfaction (1–7)", 1.0, 7.0, 4.5, step=0.1,
-        help="Overall satisfaction with the relationship"
+        "How happy are they in the relationship?", 1.0, 7.0, 4.5, step=0.1,
+        help="1 = very unhappy · 7 = very happy and content"
     )
     intimacy = st.slider(
-        "Intimacy (1–7)", 1.0, 7.0, 4.2, step=0.1,
-        help="Felt closeness and emotional connection (Sternberg)"
+        "How emotionally close do you feel?", 1.0, 7.0, 4.2, step=0.1,
+        help="1 = distant, little sharing · 7 = very close, open and connected"
     )
     passion = st.slider(
-        "Passion (1–7)", 1.0, 7.0, 4.3, step=0.1,
-        help="Romantic attraction and excitement (Sternberg)"
+        "How strong is the romantic spark / attraction?", 1.0, 7.0, 4.3, step=0.1,
+        help="1 = little excitement · 7 = strong attraction and excitement"
     )
     commitment = st.slider(
-        "Commitment (1–7)", 1.0, 7.0, 3.8, step=0.1,
-        help="Intention to maintain the relationship long-term (Sternberg)"
+        "How committed are they to making it last?", 1.0, 7.0, 3.8, step=0.1,
+        help="1 = keeping it very casual · 7 = fully committed to the long term"
     )
     perceived_social_support = st.slider(
-        "Perceived social support (1–7)", 1.0, 7.0, 4.5, step=0.1,
-        help="Belief that others provide emotional/practical support"
+        "How supported do they feel by friends & family?", 1.0, 7.0, 4.5, step=0.1,
+        help="1 = feels alone with little support · 7 = strong support network around them"
     )
 
     # ── Behavioural
-    st.markdown('<div class="sidebar-section">Behavioural factors</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section">Behaviour & history</div>', unsafe_allow_html=True)
 
-    prior_ghosting_experience   = st.checkbox("Has been ghosted before",  value=False)
-    prior_ghosting_perpetrator  = st.checkbox("Has ghosted someone before", value=False)
+    prior_ghosting_experience   = st.checkbox("They have been ghosted before",  value=False,
+        help="Has this person been ghosted by someone in the past?")
+    prior_ghosting_perpetrator  = st.checkbox("They have ghosted someone before", value=False,
+        help="Has this person ghosted someone else in the past?")
     breadcrumbing_exposure      = st.slider(
-        "Breadcrumbing exposure (0–10)", 0.0, 10.0, 2.5, step=0.1,
-        help="Degree of exposure to inconsistent/non-committal behaviour from partner"
+        "How often do they send mixed / non-committal signals?", 0.0, 10.0, 2.5, step=0.1,
+        help="\"Breadcrumbing\" = occasional flirty texts or likes that keep you interested "
+             "but never lead to real plans or commitment. 0 = never · 10 = constantly"
     )
     neuroticism                 = st.slider(
-        "Neuroticism (1–5)", 1.0, 5.0, 2.8, step=0.1,
-        help="Personality trait: emotional instability and anxiety"
+        "How easily do they get stressed or anxious (in general)?", 1.0, 5.0, 2.8, step=0.1,
+        help="Their general temperament, not just in this relationship. "
+             "1 = very calm and steady · 5 = easily worried, moody or reactive"
     )
     active_matches              = st.slider(
-        "Active simultaneous conversations/matches", 0, 20, 3,
-        help="Number of other people being messaged at the same time"
+        "How many other people are they chatting to?", 0, 20, 3,
+        help="Number of other romantic conversations or matches going on at the same time"
     )
     platform_inactivity         = st.checkbox(
-        "Partner recently went inactive on platform", value=False
+        "They've recently gone quiet or inactive", value=False,
+        help="Have they suddenly become much less active or stopped logging in?"
     )
     conflict_frequency          = st.select_slider(
-        "Conflict frequency",
+        "How often do you argue or clash?",
         options=[0, 1, 2, 3],
         value=1,
-        format_func=lambda x: {0:"None", 1:"Rare", 2:"Occasional", 3:"Frequent"}[x],
-        help="How often conflicts or arguments occur"
+        format_func=lambda x: {0:"Never", 1:"Rarely", 2:"Sometimes", 3:"Often"}[x],
+        help="How frequently disagreements or arguments come up"
     )
 
     st.markdown("---")
@@ -529,18 +523,13 @@ else:
         st.caption("Bars show how each feature pushed the prediction toward or away from 'ghosted'. "
                    "Red = increases risk · Blue = reduces risk.")
 
-        # True per-instance SHAP, computed via LinearExplainer against a
-        # background sample drawn from the training data.
+        # Approximate SHAP-style contribution from preprocessed input
+        # (True per-instance SHAP computed here via LinearExplainer)
         try:
             import shap as shap_lib
             pre = pipeline.named_steps["preprocessor"]
             clf = pipeline.named_steps["classifier"]
             X_transformed = pre.transform(input_data)
-
-            # Background distribution — transform the training rows through the
-            # same fitted preprocessor. This is the reference the contribution
-            # of each feature is measured against.
-            background = pre.transform(load_background())
 
             # Get feature names after transformation
             num_names = num_features
@@ -549,9 +538,9 @@ else:
             all_names = num_names + ord_names + nom_names
 
             explainer   = shap_lib.LinearExplainer(clf, shap_lib.maskers.Independent(
-                              background, max_samples=100))
+                              X_transformed, max_samples=100))
             shap_vals   = explainer(X_transformed)
-            sv          = np.asarray(shap_vals.values[0]).ravel()
+            sv          = shap_vals.values[0]
 
             contrib_df = pd.DataFrame({"feature": all_names, "shap": sv})
             contrib_df["abs"] = contrib_df["shap"].abs()
