@@ -1,0 +1,27 @@
+GHOSTING PREDICTION — TRAINING REPORT
+=================================================================
+Dataset: 2,000 observations | 24 features | Target: ghosted (0/1)
+Class balance: 573 ghosted (28.6%) | 1427 not ghosted (71.4%)
+Validation: 5-fold stratified cross-validation with SMOTE (training folds only)
+
+MODEL COMPARISON (cross-validated, mean ± std):
+-----------------------------------------------------------------
+Logistic Regression    | Acc=0.886±0.016 | F1=0.817±0.024 | AUC=0.953±0.013 | Recall=0.885±0.034
+Decision Tree          | Acc=0.749±0.023 | F1=0.612±0.027 | AUC=0.751±0.009 | Recall=0.689±0.038
+Random Forest          | Acc=0.841±0.025 | F1=0.694±0.056 | AUC=0.920±0.017 | Recall=0.635±0.073
+XGBoost                | Acc=0.857±0.020 | F1=0.758±0.036 | AUC=0.931±0.017 | Recall=0.787±0.049
+
+BEST MODEL: Logistic Regression (by F1-score = 0.8171)
+
+TOP 10 FEATURES BY SHAP IMPORTANCE:
+-----------------------------------------------------------------
+   1. response_rate_pct              1.8209
+   2. conv_length_trend              1.3639
+   3. prior_ghosting_perpetrator     1.3211
+   4. avg_response_time_hours        1.1119
+   5. initiation_ratio               0.9428
+   6. rejection_sensitivity          0.9179
+   7. max_silence_gap_days           0.8688
+   8. platform_inactivity            0.8510
+   9. relationship_stage             0.7907
+  10. relationship_satisfaction      0.7305
